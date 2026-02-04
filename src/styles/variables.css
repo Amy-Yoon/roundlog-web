@@ -1,0 +1,118 @@
+/* RoundLog Design System */
+
+:root {
+   /* ------------------------------
+     Color Palette (User-Provided)
+     ------------------------------ */
+
+   /* Primary Brand (Green Palette) */
+   --color-primary: #4CAF50;
+   /* Main Green */
+   --color-primary-hover: #45a049;
+   /* Slightly darker */
+   --color-primary-active: #3d8b40;
+   /* Even darker */
+   --color-primary-light: #90C890;
+   /* Light Green */
+   --color-primary-lighter: #D4E8D4;
+   /* Very Light Green */
+   --color-primary-dark: #2e7d32;
+   /* Dark Green */
+
+   /* Accent (Same as Primary for consistency) */
+   --color-accent: #4CAF50;
+   --color-accent-hover: #45a049;
+   --color-accent-light: #90C890;
+
+   /* Secondary (Orange Palette) */
+   --color-secondary: #FFCC99;
+   --color-secondary-light: #FFE6CC;
+
+   /* Info (Blue Palette) */
+   --color-info: #66B3FF;
+   --color-info-light: #B3D1FF;
+
+   /* Neutrals & Backgrounds */
+   --color-bg-dark: #F8F9FA;
+   /* Page Background (Off-White) */
+   --color-bg-card: #FFFFFF;
+   /* Card Background */
+   --color-bg-light: #F5F7F5;
+   /* Subtle green-tinted background */
+   --color-bg-lighter: #FAFBFA;
+   /* Even lighter */
+   --color-border: #E5E7EB;
+   /* Gray 200 */
+
+   /* Text Colors */
+   --color-text-main: #1F2937;
+   /* Gray 800 */
+   --color-text-muted: #6B7280;
+   /* Gray 500 */
+   --color-text-bright: #111827;
+   /* Gray 900 */
+   --color-text-inverse: #FFFFFF;
+   /* White text on dark/colored bg */
+
+   /* Feedback */
+   --color-success: #4CAF50;
+   /* Use primary green */
+   --color-warning: #FFCC99;
+   /* Use secondary orange */
+   --color-danger: #EF4444;
+
+   /* State Colors */
+   --color-disabled-bg: #E5E7EB;
+   --color-disabled-text: #9CA3AF;
+
+   /* ------------------------------
+     Typography Scale
+     ------------------------------ */
+   --font-family: 'Inter', system-ui, -apple-system, sans-serif;
+
+   --font-size-xs: 0.75rem;
+   /* 12px */
+   --font-size-sm: 0.875rem;
+   /* 14px */
+   --font-size-md: 1rem;
+   /* 16px (Base) */
+   --font-size-lg: 1.125rem;
+   /* 18px */
+   --font-size-xl: 1.25rem;
+   /* 20px */
+   --font-size-2xl: 1.5rem;
+   /* 24px */
+   --font-size-3xl: 2rem;
+   /* 32px */
+
+   /* Headings */
+   --h1-size: 2.25rem;
+   --h2-size: 1.875rem;
+   --h3-size: 1.5rem;
+
+   /* ------------------------------
+     Spacing & Layout
+     ------------------------------ */
+   --spacing-xs: 4px;
+   --spacing-sm: 8px;
+   --spacing-md: 16px;
+   --spacing-lg: 24px;
+   --spacing-xl: 32px;
+   --spacing-2xl: 48px;
+
+   /* ------------------------------
+     Borders & Effects
+     ------------------------------ */
+   --radius-sm: 8px;
+   --radius-md: 12px;
+   --radius-lg: 20px;
+   --radius-full: 9999px;
+
+   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+   --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+   --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+
+   /* Glass Effect */
+   --glass-bg: rgba(255, 255, 255, 1.0);
+   --glass-border: 1px solid var(--color-border);
+}

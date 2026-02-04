@@ -1,0 +1,17 @@
+@import "tailwindcss";
+
+
+
+/* Keeping the existing imports if we want to bundle them here, 
+   but since they are already in layout.tsx, we might not need to.
+    However, for Tailwind to work, we need this file imported in layout.tsx.
+*/
+
+:root {
+    --background: #ffffff;
+    --foreground: #171717;
+}
+
+@theme {
+    --font-inter: 'Inter', sans-serif;
+}
