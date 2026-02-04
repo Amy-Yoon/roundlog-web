@@ -1,25 +1,37 @@
 'use client'
 
-import React, { useState, use } from 'react'
+import React, { useState, use, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, MapPin, Activity, MessageCircle, Flag, TrendingUp, Trophy } from 'lucide-react'
+import { ArrowLeft, MapPin, Activity, MessageCircle, Flag, TrendingUp, Trophy, Loader2 } from 'lucide-react'
 import Card from '@/components/ui/Card'
-import { MOCK_COURSES } from '@/data/courses'
 import { useRounds } from '@/hooks/useRounds'
-import { MOCK_PUBLIC_ROUNDS } from '@/data/mockPublicRounds'
+import { usePublicRounds } from '@/hooks/usePublicRounds'
+import { useClubs, Club, Course } from '@/hooks/useClubs'
 
 // Internal components
 const CourseReviews = ({ courseName, selectedHole, onReset }: { courseName: string, selectedHole: number | null, onReset: () => void }) => {
+    const { rounds: publicRounds, loading } = usePublicRounds()
+
     // Filter public rounds for this course
-    const allReviews = MOCK_PUBLIC_ROUNDS.filter(r =>
-        r.course_name.includes(courseName) || courseName.includes(r.course_name) ||
-        (courseName.includes("Sky72") && r.course_name === "Sky72 Alpha") // Demo data match
+    const allReviews = publicRounds.filter((r: any) =>
+        r.course_name.includes(courseName) || courseName.includes(r.course_name)
     )
 
     // If filtering by hole, only match rounds that have a comment for that hole
     const displayedReviews = selectedHole
-        ? allReviews.filter(r => r.holeComments?.some((c: any) => c.hole === selectedHole))
+        ? allReviews.filter((r: any) => {
+            const holeComments = r.hole_comments as any[] | null
+            return holeComments?.some((c: any) => c.hole === selectedHole)
+        })
         : allReviews
+
+    if (loading) {
+        return (
+            <div style={{ display: 'flex', justifyContent: 'center', padding: '40px' }}>
+                <Loader2 className="animate-spin" color="var(--color-primary)" />
+            </div>
+        )
+    }
 
     if (displayedReviews.length === 0) {
         return (
@@ -55,13 +67,13 @@ const CourseReviews = ({ courseName, selectedHole, onReset }: { courseName: stri
                 </div>
             )}
 
-            {displayedReviews.map(review => {
-                // Determine what content to show: specific hole comment or general memo
+            {displayedReviews.map((review: any) => {
+                const holeComments = review.hole_comments as any[] | null
                 let content = review.memo
                 let isHoleComment = false
 
-                if (selectedHole && review.holeComments) {
-                    const holeComment = review.holeComments.find((c: any) => c.hole === selectedHole)
+                if (selectedHole && holeComments) {
+                    const holeComment = holeComments.find((c: any) => c.hole === selectedHole)
                     if (holeComment) {
                         content = holeComment.content
                         isHoleComment = true
@@ -78,11 +90,11 @@ const CourseReviews = ({ courseName, selectedHole, onReset }: { courseName: stri
                                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                                     fontWeight: 700, fontSize: '0.8rem'
                                 }}>
-                                    {review.userName.charAt(0)}
+                                    User
                                 </div>
                                 <div>
-                                    <div style={{ fontWeight: 600, fontSize: '0.95rem' }}>{review.userName}</div>
-                                    <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{review.date}</div>
+                                    <div style={{ fontWeight: 600, fontSize: '0.95rem' }}>{review.user_id.slice(0, 8)}</div>
+                                    <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{new Date(review.date).toLocaleDateString()}</div>
                                 </div>
                             </div>
                             <div style={{
@@ -112,17 +124,9 @@ const CourseReviews = ({ courseName, selectedHole, onReset }: { courseName: stri
 }
 
 const MyCourseStats = ({ courseName }: { courseName: string }) => {
-    const { rounds } = useRounds() // Assuming useRounds fetches user's rounds
+    const { rounds } = useRounds()
 
-    // Filter rounds for this course (name matching)
-    // Relaxed matching to handle legacy data (e.g. "Sky72 CC" vs "스카이72 CC")
-    const myRounds = rounds.filter(r => {
-        const rCourseName = r.course_name
-        return rCourseName === courseName ||
-            rCourseName.includes(courseName) ||
-            (courseName.includes("스카이72") && rCourseName.toLowerCase().includes("sky72")) ||
-            (courseName.includes("Sky72") && rCourseName.includes("스카이72"))
-    })
+    const myRounds = rounds.filter(r => r.course_name.includes(courseName) || courseName.includes(r.course_name))
     const visitCount = myRounds.length
 
     // Calculate Average Score
@@ -165,55 +169,91 @@ const MyCourseStats = ({ courseName }: { courseName: string }) => {
 }
 
 export default function CourseDetail({ params }: { params: Promise<{ id: string }> }) {
-    const { id } = use(params)
+    const { id: clubId } = use(params)
     const router = useRouter()
-    const course = MOCK_COURSES.find(c => c.id === id)
+    const { fetchClubById, fetchCoursesByClub, fetchHolesByCourse } = useClubs()
+    const { rounds: publicRounds } = usePublicRounds()
 
-    // Default to first subcourse if available
-    const [selectedSub, setSelectedSub] = useState<any>(course?.subCourses?.[0] || null)
+    const [club, setClub] = useState<Club | null>(null)
+    const [courses, setCourses] = useState<Course[]>([])
+    const [selectedSub, setSelectedSub] = useState<Course | null>(null)
+    const [holes, setHoles] = useState<any[]>([])
+    const [loading, setLoading] = useState(true)
     const [selectedHole, setSelectedHole] = useState<number | null>(null)
-    const [selectedTee, setSelectedTee] = useState('white') // Default to white tee
+    const [selectedTee, setSelectedTee] = useState('white')
 
-    // Calculate hole comment counts
-    const getHoleCommentCount = (holeNo: number) => {
-        let count = 0
-        if (!course) return 0
+    useEffect(() => {
+        const loadData = async () => {
+            try {
+                setLoading(true)
+                const clubData = await fetchClubById(clubId)
+                setClub(clubData)
 
-        // Filter public rounds for this course
-        const publicRounds = MOCK_PUBLIC_ROUNDS.filter(r =>
-            r.course_name.includes(course.name) || course.name.includes(r.course_name) ||
-            (course.name.includes("Sky72") && r.course_name === "Sky72 Alpha")
-        )
-
-        publicRounds.forEach(r => {
-            if (r.holeComments) {
-                const comment = r.holeComments.find((c: any) => c.hole === holeNo)
-                if (comment) count++
+                const coursesData = await fetchCoursesByClub(clubId)
+                setCourses(coursesData)
+                if (coursesData.length > 0) {
+                    setSelectedSub(coursesData[0])
+                }
+            } catch (err) {
+                console.error('Error loading club data:', err)
+            } finally {
+                setLoading(false)
             }
-        })
-        return count
+        }
+        loadData()
+    }, [clubId])
+
+    useEffect(() => {
+        const loadHoles = async () => {
+            if (selectedSub) {
+                try {
+                    const holesData = await fetchHolesByCourse(selectedSub.id)
+                    setHoles(holesData)
+                } catch (err) {
+                    console.error('Error loading holes:', err)
+                }
+            }
+        }
+        loadHoles()
+    }, [selectedSub])
+
+    const getHoleCommentCount = (holeNo: number) => {
+        if (!club) return 0
+        return publicRounds.filter((r: any) => {
+            const isTargetCourse = r.club_name === club.name || r.course_name.includes(club.name)
+            const holeComments = r.hole_comments as any[] | null
+            return isTargetCourse && holeComments?.some((c: any) => c.hole === holeNo)
+        }).length
     }
 
     const handleHoleCommentClick = (holeNo: number) => {
         setSelectedHole(holeNo)
-        // Scroll to reviews
         const reviewSection = document.getElementById('reviews-section')
         if (reviewSection) {
             reviewSection.scrollIntoView({ behavior: 'smooth' })
         }
     }
 
-    if (!course) {
-        return <div style={{ padding: '20px' }}>코스를 찾을 수 없습니다.</div>
+    if (loading) {
+        return (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '60vh', gap: '16px' }}>
+                <Loader2 className="animate-spin" size={40} color="var(--color-primary)" />
+                <p style={{ color: 'var(--color-text-muted)' }}>골프장 정보를 불러오는 중...</p>
+            </div>
+        )
+    }
+
+    if (!club) {
+        return <div style={{ padding: '20px', textAlign: 'center' }}>골프장을 찾을 수 없습니다.</div>
     }
 
     return (
         <div style={{ paddingBottom: '40px' }}>
             <div style={{ display: 'flex', alignItems: 'center', marginBottom: 'var(--spacing-md)' }}>
-                <button onClick={() => router.back()} style={{ marginRight: '10px', color: 'var(--color-text-muted)' }}>
+                <button onClick={() => router.back()} style={{ marginRight: '10px', color: 'var(--color-text-muted)', background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}>
                     <ArrowLeft size={24} />
                 </button>
-                <h1 style={{ marginBottom: 0, fontSize: 'var(--h2-size)' }}>코스 상세</h1>
+                <h1 style={{ marginBottom: 0, fontSize: 'var(--h2-size)' }}>골프장 상세</h1>
             </div>
 
             <div style={{
@@ -224,71 +264,84 @@ export default function CourseDetail({ params }: { params: Promise<{ id: string 
                 boxShadow: 'var(--shadow-md)',
                 border: '2px solid var(--color-primary-lighter)'
             }}>
-                <h2 style={{ fontSize: '1.8rem', fontWeight: 800, marginBottom: '8px', color: 'var(--color-text-bright)' }}>{course.name}</h2>
+                <h2 style={{ fontSize: '1.8rem', fontWeight: 800, marginBottom: '8px', color: 'var(--color-text-bright)' }}>{club.name}</h2>
                 <div style={{ display: 'flex', gap: '15px', color: 'var(--color-text-muted)', fontSize: '0.9rem', marginBottom: '16px' }}>
-                    <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><MapPin size={14} /> {course.location}</span>
-                    <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><Activity size={14} /> {course.subCourses ? course.subCourses.length : 0}개 코스 보유</span>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><MapPin size={14} /> {club.location}</span>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><Activity size={14} /> {courses.length}개 코스 보유</span>
                 </div>
                 <p style={{ lineHeight: 1.5, color: 'var(--color-text-main)', fontSize: '0.95rem' }}>
-                    {course.description}
+                    {club.address || '상세 주소 정보가 없습니다.'}
                 </p>
             </div>
 
-            <MyCourseStats courseName={course.name} />
+            <MyCourseStats courseName={club.name} />
 
             {/* SubCourse Tabs */}
             <h3 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: '12px' }}>코스 선택</h3>
             <div style={{ display: 'flex', gap: '10px', overflowX: 'auto', paddingBottom: '10px', marginBottom: '10px' }}>
-                {course.subCourses?.map(sub => (
-                    <button
-                        key={sub.id}
-                        onClick={() => setSelectedSub(sub)}
-                        style={{
-                            padding: '8px 16px',
-                            borderRadius: '20px',
-                            background: selectedSub?.id === sub.id ? 'var(--color-primary)' : 'var(--color-bg-light)',
-                            color: selectedSub?.id === sub.id ? 'white' : 'var(--color-text-muted)',
-                            fontWeight: 600,
-                            whiteSpace: 'nowrap',
-                            border: selectedSub?.id === sub.id ? 'none' : '1px solid var(--color-border)',
-                            transition: 'all 0.2s'
-                        }}
-                    >
-                        {sub.name}
-                    </button>
-                )) || <div>No sub courses</div>}
+                {courses.length > 0 ? (
+                    courses.map(sub => (
+                        <button
+                            key={sub.id}
+                            onClick={() => setSelectedSub(sub)}
+                            style={{
+                                padding: '8px 16px',
+                                borderRadius: '20px',
+                                background: selectedSub?.id === sub.id ? 'var(--color-primary)' : 'var(--color-bg-light)',
+                                color: selectedSub?.id === sub.id ? 'white' : 'var(--color-text-muted)',
+                                fontWeight: 600,
+                                whiteSpace: 'nowrap',
+                                border: selectedSub?.id === sub.id ? 'none' : '1px solid var(--color-border)',
+                                transition: 'all 0.2s',
+                                cursor: 'pointer'
+                            }}
+                        >
+                            {sub.name}
+                        </button>
+                    ))
+                ) : (
+                    <div style={{ padding: '10px', color: 'var(--color-text-muted)', fontSize: '0.9rem' }}>등록된 코스가 없습니다.</div>
+                )}
             </div>
 
             {/* Tee Type Selector */}
-            <div style={{ marginBottom: '10px' }}>
-                <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '5px' }}>
-                    {[{ value: 'ladies', label: '레이디 티', color: '#FF6B9D' }, { value: 'white', label: '화이트 티', color: '#FFFFFF' }, { value: 'blue', label: '블루 티', color: '#4A90E2' }, { value: 'black', label: '블랙 티', color: '#2C3E50' }].map(tee => (
-                        <button
-                            key={tee.value}
-                            onClick={() => setSelectedTee(tee.value)}
-                            style={{
-                                padding: '6px 14px',
-                                borderRadius: '16px',
-                                background: selectedTee === tee.value ? tee.color : 'var(--color-bg-light)',
-                                color: selectedTee === tee.value ? (tee.value === 'white' ? '#333' : 'white') : 'var(--color-text-muted)',
-                                fontWeight: 600,
-                                fontSize: '0.85rem',
-                                whiteSpace: 'nowrap',
-                                border: selectedTee === tee.value ? 'none' : `1px solid ${tee.value === 'white' ? '#ccc' : tee.color}`,
-                                transition: 'all 0.2s'
-                            }}
-                        >
-                            {tee.label}
-                        </button>
-                    ))}
+            {courses.length > 0 && (
+                <div style={{ marginBottom: '10px' }}>
+                    <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '5px' }}>
+                        {[
+                            { value: 'ladies', label: '레이디 티', color: '#FF6B9D' },
+                            { value: 'white', label: '화이트 티', color: '#FFFFFF' },
+                            { value: 'blue', label: '블루 티', color: '#4A90E2' },
+                            { value: 'black', label: '블랙 티', color: '#2C3E50' }
+                        ].map(tee => (
+                            <button
+                                key={tee.value}
+                                onClick={() => setSelectedTee(tee.value)}
+                                style={{
+                                    padding: '6px 14px',
+                                    borderRadius: '16px',
+                                    background: selectedTee === tee.value ? tee.color : 'var(--color-bg-light)',
+                                    color: selectedTee === tee.value ? (tee.value === 'white' ? '#333' : 'white') : 'var(--color-text-muted)',
+                                    fontWeight: 600,
+                                    fontSize: '0.85rem',
+                                    whiteSpace: 'nowrap',
+                                    border: selectedTee === tee.value ? 'none' : `1px solid ${tee.value === 'white' ? '#ccc' : tee.color}`,
+                                    transition: 'all 0.2s',
+                                    cursor: 'pointer'
+                                }}
+                            >
+                                {tee.label}
+                            </button>
+                        ))}
+                    </div>
                 </div>
-            </div>
+            )}
 
             <Card style={{ padding: 0, overflow: 'hidden' }}>
                 {selectedSub ? (
                     <>
                         <div style={{ padding: '16px', borderBottom: '1px solid var(--color-border)', background: 'var(--color-primary-lighter)' }}>
-                            <h4 style={{ fontSize: '1.1rem', color: 'var(--color-primary-dark)', fontWeight: 700 }}>{selectedSub.name} ({selectedSub.holes}H / P{selectedSub.par})</h4>
+                            <h4 style={{ fontSize: '1.1rem', color: 'var(--color-primary-dark)', fontWeight: 700 }}>{selectedSub.name} ({selectedSub.holes}H)</h4>
                         </div>
                         <div style={{ padding: '16px', borderBottom: '1px solid var(--color-border)', display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr 1fr', fontWeight: 600, color: 'var(--color-text-muted)', fontSize: '0.9rem' }}>
                             <span>Hole</span>
@@ -297,15 +350,15 @@ export default function CourseDetail({ params }: { params: Promise<{ id: string 
                             <span>Hdcp</span>
                             <span>Talks</span>
                         </div>
-                        {selectedSub.holeData && selectedSub.holeData.length > 0 ? (
-                            selectedSub.holeData.map((hole: any) => {
+                        {holes.length > 0 ? (
+                            holes.map((hole: any) => {
                                 const commentCount = getHoleCommentCount(hole.hole)
                                 return (
-                                    <div key={hole.hole} style={{ padding: '16px', borderBottom: '1px solid var(--color-border)', display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr 1fr', fontSize: '0.95rem', alignItems: 'center' }}>
+                                    <div key={hole.id} style={{ padding: '16px', borderBottom: '1px solid var(--color-border)', display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr 1fr', fontSize: '0.95rem', alignItems: 'center' }}>
                                         <span style={{ fontWeight: 700, color: 'var(--color-accent)' }}>{hole.hole}</span>
                                         <span>{hole.par}</span>
-                                        <span>{hole.distances ? hole.distances[selectedTee] : hole.distance}</span>
-                                        <span>{hole.handicap}</span>
+                                        <span>{hole.distance || '-'}</span>
+                                        <span>{hole.handicap || '-'}</span>
                                         <span>
                                             {commentCount > 0 ? (
                                                 <span
@@ -334,7 +387,7 @@ export default function CourseDetail({ params }: { params: Promise<{ id: string 
                         )}
                     </>
                 ) : (
-                    <div style={{ padding: '20px' }}>코스를 선택해주세요.</div>
+                    courses.length > 0 && <div style={{ padding: '20px' }}>코스를 선택해주세요.</div>
                 )}
             </Card>
 
@@ -342,7 +395,7 @@ export default function CourseDetail({ params }: { params: Promise<{ id: string 
             <div id="reviews-section" style={{ marginTop: 'var(--spacing-lg)' }}>
                 <h3 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: '12px' }}>유저 리뷰</h3>
                 <CourseReviews
-                    courseName={course.name}
+                    courseName={club.name}
                     selectedHole={selectedHole}
                     onReset={() => setSelectedHole(null)}
                 />

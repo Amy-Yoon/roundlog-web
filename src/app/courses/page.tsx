@@ -2,9 +2,9 @@
 
 import React, { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Search, MapPin, ChevronRight, Star } from 'lucide-react'
+import { Search, MapPin, ChevronRight, Star, Loader2 } from 'lucide-react'
 import Input from '@/components/ui/Input'
-import { MOCK_COURSES } from '@/data/courses'
+import { useClubs } from '@/hooks/useClubs'
 
 const CourseItem = ({ course, onClick }: { course: any, onClick: () => void }) => {
     const [isHovered, setIsHovered] = React.useState(false)
@@ -40,14 +40,14 @@ const CourseItem = ({ course, onClick }: { course: any, onClick: () => void }) =
                     <div style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', display: 'flex', gap: '8px', alignItems: 'center' }}>
                         <span style={{ display: 'flex', alignItems: 'center', gap: '2px' }}><MapPin size={12} /> {course.location}</span>
                         <span style={{ width: '3px', height: '3px', background: 'var(--color-text-muted)', borderRadius: '50%', opacity: 0.5 }}></span>
-                        <span>{course.subCourses ? `${course.subCourses.length}개 코스` : '-'}</span>
+                        <span>{course.hole_count ? `${course.hole_count}홀` : '-'}</span>
                     </div>
                 </div>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '4px', background: '#FFF5E6', padding: '4px 10px', borderRadius: '12px' }}>
                     <Star size={16} fill="#FF9800" color="#FF9800" />
-                    <span style={{ fontWeight: 700, fontSize: '0.95rem', color: '#FF9800' }}>{course.rating}</span>
+                    <span style={{ fontWeight: 700, fontSize: '0.95rem', color: '#FF9800' }}>4.5</span>
                 </div>
                 <ChevronRight size={20} color="var(--color-text-muted)" />
             </div>
@@ -58,10 +58,20 @@ const CourseItem = ({ course, onClick }: { course: any, onClick: () => void }) =
 export default function CourseList() {
     const router = useRouter()
     const [searchTerm, setSearchTerm] = useState('')
+    const { clubs, loading, error } = useClubs()
 
-    const filteredCourses = MOCK_COURSES.filter(course =>
-        course.name.includes(searchTerm) || course.location.includes(searchTerm)
+    const filteredClubs = clubs.filter(club =>
+        club.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        club.location.toLowerCase().includes(searchTerm.toLowerCase())
     )
+
+    if (error) {
+        return (
+            <div style={{ padding: '40px', textAlign: 'center' }}>
+                <p style={{ color: 'var(--color-danger)' }}>데이터를 불러오는 중 오류가 발생했습니다: {error}</p>
+            </div>
+        )
+    }
 
     return (
         <div style={{ paddingBottom: '80px' }}>
@@ -77,10 +87,14 @@ export default function CourseList() {
                 />
             </div>
 
-            <div className="glass-card" style={{ padding: 0, overflow: 'hidden' }}>
-                {filteredCourses.length > 0 ? (
-                    filteredCourses.map(course => (
-                        <CourseItem key={course.id} course={course} onClick={() => router.push(`/courses/${course.id}`)} />
+            <div className="glass-card" style={{ padding: 0, overflow: 'hidden', minHeight: '200px', display: 'flex', flexDirection: 'column' }}>
+                {loading ? (
+                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px' }}>
+                        <Loader2 className="animate-spin" color="var(--color-primary)" />
+                    </div>
+                ) : filteredClubs.length > 0 ? (
+                    filteredClubs.map(club => (
+                        <CourseItem key={club.id} course={club} onClick={() => router.push(`/courses/${club.id}`)} />
                     ))
                 ) : (
                     <div style={{ padding: '40px', textAlign: 'center', color: 'var(--color-text-muted)' }}>
