@@ -1,6 +1,8 @@
 'use client'
 
 import React, { useState } from 'react'
+
+export const dynamic = 'force-dynamic'
 import { useAuth } from '@/contexts/AuthContext'
 import Card from '@/components/ui/Card'
 import Button from '@/components/ui/Button'

@@ -1,6 +1,8 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
+
+export const dynamic = 'force-dynamic'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft, Save, Info, MoreHorizontal } from 'lucide-react'
 import Card from '@/components/ui/Card'

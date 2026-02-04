@@ -1,6 +1,8 @@
 'use client'
 
 import React, { use, useEffect, useState } from 'react'
+
+export const dynamic = 'force-dynamic'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft, Calendar, Clock, Wind, DollarSign, Users, Trash2, Star, MapPin } from 'lucide-react'
 import Card from '@/components/ui/Card'

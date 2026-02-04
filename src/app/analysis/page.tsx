@@ -1,6 +1,8 @@
 'use client'
 
 import React, { useMemo } from 'react'
+
+export const dynamic = 'force-dynamic'
 import { useRounds } from '@/hooks/useRounds'
 import Card from '@/components/ui/Card'
 import { TrendingUp, Sun } from 'lucide-react'
