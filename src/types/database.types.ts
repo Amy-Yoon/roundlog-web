@@ -10,31 +10,48 @@ export interface Database {
     public: {
         Tables: {
             users: {
-                Row: User
-                Insert: UserInsert
-                Update: UserUpdate
+                Row: UserProfile
+                Insert: UserProfileInsert
+                Update: UserProfileUpdate
             }
-            courses: {
-                Row: Course
-                Insert: CourseInsert
-                Update: CourseUpdate
+            golf_clubs: {
+                Row: GolfClub
+                Insert: GolfClubInsert
+                Update: GolfClubUpdate
+            }
+            golf_courses: {
+                Row: GolfCourse
+                Insert: GolfCourseInsert
+                Update: GolfCourseUpdate
+            }
+            golf_course_holes: {
+                Row: GolfCourseHole
+                Insert: GolfCourseHoleInsert
+                Update: GolfCourseHoleUpdate
             }
             rounds: {
                 Row: Round
                 Insert: RoundInsert
                 Update: RoundUpdate
             }
-            hole_scores: {
-                Row: HoleScore
-                Insert: HoleScoreInsert
-                Update: HoleScoreUpdate
-            }
+        }
+        Views: {
+            [_ in never]: never
+        }
+        Functions: {
+            [_ in never]: never
+        }
+        Enums: {
+            [_ in never]: never
+        }
+        CompositeTypes: {
+            [_ in never]: never
         }
     }
 }
 
-// User Types
-export interface User {
+// User Profile Types
+export interface UserProfile {
     id: string
     email: string
     name: string
@@ -44,49 +61,60 @@ export interface User {
     created_at?: string
 }
 
-export interface UserInsert extends Omit<User, 'created_at'> {
+export interface UserProfileInsert extends Omit<UserProfile, 'created_at'> {
     created_at?: string
 }
 
-export interface UserUpdate extends Partial<UserInsert> { }
+export interface UserProfileUpdate extends Partial<UserProfileInsert> { }
 
-// Course Types
-export interface Course {
+// Golf Club Types
+export interface GolfClub {
     id: string
     name: string
     location: string
-    rating: number
-    description: string
+    address?: string
+    club_type?: string
+    hole_count?: number
     created_at?: string
-    // JSONB column for complex nested data in MVP
-    sub_courses: SubCourse[]
 }
 
-export interface SubCourse {
-    id: string
-    name: string
-    holes: number
-    par: number
-    holeData: HoleData[]
-}
-
-export interface HoleData {
-    hole: number
-    par: number
-    distances: {
-        ladies: number
-        white: number
-        blue: number
-        black: number
-    }
-    handicap: number
-}
-
-export interface CourseInsert extends Omit<Course, 'id' | 'created_at'> {
+export interface GolfClubInsert extends Omit<GolfClub, 'id' | 'created_at'> {
     id?: string
 }
 
-export interface CourseUpdate extends Partial<CourseInsert> { }
+export interface GolfClubUpdate extends Partial<GolfClubInsert> { }
+
+// Golf Course Types
+export interface GolfCourse {
+    id: string
+    golf_club_id: string
+    name: string
+    holes: number
+    created_at?: string
+}
+
+export interface GolfCourseInsert extends Omit<GolfCourse, 'id' | 'created_at'> {
+    id?: string
+}
+
+export interface GolfCourseUpdate extends Partial<GolfCourseInsert> { }
+
+// Golf Course Hole Types
+export interface GolfCourseHole {
+    id: string
+    course_id: string
+    hole: number
+    par: number
+    distance?: number
+    handicap?: number
+    created_at?: string
+}
+
+export interface GolfCourseHoleInsert extends Omit<GolfCourseHole, 'id' | 'created_at'> {
+    id?: string
+}
+
+export interface GolfCourseHoleUpdate extends Partial<GolfCourseHoleInsert> { }
 
 // Round Types
 // Round Types matching Supabase Schema
@@ -126,6 +154,8 @@ export interface RoundInsert extends Omit<Round, 'id' | 'created_at'> {
 export interface RoundUpdate extends Partial<RoundInsert> { }
 
 // Detailed Hole Scores (for Round Detail)
+// Note: We are moving towards hole_scores being stored in JSONB or separate table
+// This matches the legacy structure but matches the round detail needs
 export interface HoleScore {
     id: string
     round_id: string
@@ -136,9 +166,3 @@ export interface HoleScore {
     fairway_hit?: boolean
     gir?: boolean
 }
-
-export interface HoleScoreInsert extends Omit<HoleScore, 'id'> {
-    id?: string
-}
-
-export interface HoleScoreUpdate extends Partial<HoleScoreInsert> { }

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Course } from '@/types/database.types'
+import { GolfCourse as Course } from '@/types/database.types'
 
 export const useCourses = () => {
     const [courses, setCourses] = useState<Course[]>([])
@@ -11,8 +11,7 @@ export const useCourses = () => {
     const fetchCourses = useCallback(async () => {
         try {
             setLoading(true)
-            const { data, error } = await supabase
-                .from('courses')
+            const { data, error } = await (supabase.from('golf_courses') as any)
                 .select('*')
                 .order('name')
 

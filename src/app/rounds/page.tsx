@@ -48,14 +48,14 @@ export default function RoundList() {
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                                 {/* Line 1: Main Title (Course) */}
                                 <div style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--color-text-main)' }}>
-                                    {round.course_name || round.courseName}
+                                    {round.course_name}
                                 </div>
 
                                 {/* Line 2: Metadata (Date | Type | User) */}
                                 <div style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '8px' }}>
                                     <span>{round.date.replace(/-/g, '.')}</span>
                                     <span style={{ width: '1px', height: '10px', background: 'var(--color-border)' }}></span>
-                                    <span>{round.course_type || round.courseType}</span>
+                                    <span>{round.club_name}</span>
                                     {!user && (
                                         <>
                                             <span style={{ width: '1px', height: '10px', background: 'var(--color-border)' }}></span>
@@ -75,7 +75,7 @@ export default function RoundList() {
                                     fontSize: '1.2rem', fontWeight: 800,
                                     color: 'var(--color-text-main)'
                                 }}>
-                                    {round.total_score || round.score}
+                                    {round.total_score}
                                 </div>
                                 {user && <ChevronRight size={18} color="var(--color-text-muted)" />}
                             </div>

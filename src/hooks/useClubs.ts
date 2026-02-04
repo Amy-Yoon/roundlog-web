@@ -26,8 +26,7 @@ export const useClubs = () => {
     const fetchClubs = useCallback(async () => {
         try {
             setLoading(true)
-            const { data, error } = await supabase
-                .from('golf_clubs')
+            const { data, error } = await (supabase.from('golf_clubs') as any)
                 .select('id, name, location, address, club_type, hole_count')
                 .order('name', { ascending: true })
 
@@ -42,8 +41,7 @@ export const useClubs = () => {
     }, [supabase])
 
     const fetchCoursesByClub = async (clubId: string) => {
-        const { data, error } = await supabase
-            .from('golf_courses')
+        const { data, error } = await (supabase.from('golf_courses') as any)
             .select('id, golf_club_id, name, holes')
             .eq('golf_club_id', clubId)
 
@@ -52,8 +50,7 @@ export const useClubs = () => {
     }
 
     const fetchHolesByCourse = async (courseId: string) => {
-        const { data, error } = await supabase
-            .from('golf_course_holes')
+        const { data, error } = await (supabase.from('golf_course_holes') as any)
             .select('*')
             .eq('course_id', courseId)
             .order('hole', { ascending: true })
@@ -63,8 +60,7 @@ export const useClubs = () => {
     }
 
     const fetchClubById = async (clubId: string) => {
-        const { data, error } = await supabase
-            .from('golf_clubs')
+        const { data, error } = await (supabase.from('golf_clubs') as any)
             .select('*')
             .eq('id', clubId)
             .single()

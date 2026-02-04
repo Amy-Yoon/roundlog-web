@@ -89,7 +89,7 @@ const CourseReviews = ({ courseName, selectedHole, onReset }: { courseName: stri
                                 background: 'var(--color-bg-light)', padding: '4px 10px', borderRadius: '12px',
                                 fontWeight: 700, fontSize: '0.9rem', color: 'var(--color-text-main)'
                             }}>
-                                {review.score}타
+                                {review.total_score}타
                             </div>
                         </div>
                         {isHoleComment && (
@@ -117,7 +117,7 @@ const MyCourseStats = ({ courseName }: { courseName: string }) => {
     // Filter rounds for this course (name matching)
     // Relaxed matching to handle legacy data (e.g. "Sky72 CC" vs "스카이72 CC")
     const myRounds = rounds.filter(r => {
-        const rCourseName = r.course_name || r.courseName // handle both schema
+        const rCourseName = r.course_name
         return rCourseName === courseName ||
             rCourseName.includes(courseName) ||
             (courseName.includes("스카이72") && rCourseName.toLowerCase().includes("sky72")) ||
@@ -127,12 +127,12 @@ const MyCourseStats = ({ courseName }: { courseName: string }) => {
 
     // Calculate Average Score
     const avgScore = visitCount > 0
-        ? Math.round(myRounds.reduce((acc, curr) => acc + Number(curr.total_score || curr.score), 0) / visitCount)
+        ? Math.round(myRounds.reduce((acc, curr) => acc + Number(curr.total_score), 0) / visitCount)
         : '-'
 
     // Calculate Best Score
     const bestScore = visitCount > 0
-        ? Math.min(...myRounds.map(r => Number(r.total_score || r.score)))
+        ? Math.min(...myRounds.map(r => Number(r.total_score)))
         : '-'
 
     if (visitCount === 0) return null

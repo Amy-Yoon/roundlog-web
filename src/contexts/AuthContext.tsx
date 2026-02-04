@@ -4,7 +4,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react'
 import { User } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
-import { User as DbUser } from '@/types/database.types'
+import { UserProfile as DbUser, UserProfileUpdate as DbUserUpdate } from '@/types/database.types'
 
 interface AuthContextType {
     user: User | null
@@ -14,7 +14,7 @@ interface AuthContextType {
     signInWithEmail: (email: string, password: string) => Promise<void>
     signUpWithEmail: (email: string, password: string, name: string) => Promise<void>
     signOut: () => Promise<void>
-    updateProfile: (updates: Partial<DbUser>) => Promise<void>
+    updateProfile: (updates: DbUserUpdate) => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -113,18 +113,17 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         router.refresh()
     }
 
-    const updateProfile = async (updates: Partial<DbUser>) => {
+    const updateProfile = async (updates: DbUserUpdate) => {
         if (!user) return
 
-        const { error } = await supabase
-            .from('users')
+        const { error } = await (supabase.from('users') as any)
             .update(updates)
             .eq('id', user.id)
 
         if (error) throw error
 
         // Optimistic update
-        setDbUser(prev => prev ? { ...prev, ...updates } : null)
+        setDbUser(prev => prev ? { ...prev, ...updates } as DbUser : null)
         router.refresh()
     }
 

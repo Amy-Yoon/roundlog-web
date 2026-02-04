@@ -12,7 +12,7 @@ export default function Analysis() {
     const stats: any = useMemo(() => {
         if (!rounds || rounds.length === 0) return null
 
-        const scores = rounds.map(r => Number(r.total_score || r.score))
+        const scores = rounds.map(r => Number(r.total_score))
         const avgScore = Math.round(scores.reduce((a, b) => a + b, 0) / scores.length)
         const bestScore = Math.min(...scores)
 
@@ -23,7 +23,7 @@ export default function Analysis() {
         const weatherStats = rounds.reduce((acc: any, curr) => {
             const w = curr.weather || 'Unknown'
             if (!acc[w]) acc[w] = { total: 0, count: 0 }
-            acc[w].total += Number(curr.total_score || curr.score)
+            acc[w].total += Number(curr.total_score)
             acc[w].count += 1
             return acc
         }, {})

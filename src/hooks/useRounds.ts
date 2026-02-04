@@ -39,8 +39,7 @@ export const useRounds = () => {
 
     const createRound = async (round: RoundInsert) => {
         try {
-            const { data, error } = await supabase
-                .from('rounds')
+            const { data, error } = await (supabase.from('rounds') as any)
                 .insert(round)
                 .select()
                 .single()
@@ -56,8 +55,7 @@ export const useRounds = () => {
 
     const updateRound = async (id: string, updates: RoundUpdate) => {
         try {
-            const { data, error } = await supabase
-                .from('rounds')
+            const { data, error } = await (supabase.from('rounds') as any)
                 .update(updates)
                 .eq('id', id)
                 .select()
