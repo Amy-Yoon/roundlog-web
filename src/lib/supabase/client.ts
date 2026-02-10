@@ -8,32 +8,21 @@ export const createClient = () => {
 
     // Simplified literal access for Next.js static analysis.
     // If these are missing, the Supabase client will throw on creation.
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-    const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL!
+    const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
-    // If variables are missing, don't crash the build.
-    // Instead, log a clear warning and use placeholders to allow hydration/prerendering.
+    // If variables are missing, let the error be clear.
     if (!url || !key) {
-        if (typeof window === 'undefined') {
-            console.warn('[BUILD WARNING] Supabase environment variables are missing during build/prerendering. Using placeholders.')
-        } else {
-            console.error('[RUNTIME ERROR] Supabase environment variables are missing! Please check Vercel settings.')
+        if (typeof window !== 'undefined') {
+            console.error('[CRITICAL] Supabase environment variables are missing! Check Vercel settings.')
         }
-
-        return createBrowserClient<Database>(
-            url || 'https://placeholder.supabase.co',
-            key || 'placeholder-key'
-        )
     }
 
     try {
         client = createBrowserClient<Database>(url, key)
     } catch (err) {
-        console.error('Supabase initialization failed unexpectedly:', err)
-        return createBrowserClient<Database>(
-            'https://placeholder.supabase.co',
-            'placeholder-key'
-        )
+        console.error('Supabase initialization failed:', err)
+        throw err
     }
     return client
 }
