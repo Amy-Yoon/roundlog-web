@@ -2,7 +2,7 @@
 
 import React from 'react'
 import { useRouter } from 'next/navigation'
-import { PlusCircle, MapPin, ChevronRight, Trophy } from 'lucide-react'
+import { PlusCircle, MapPin, ChevronRight, Trophy, Calendar, Calendar as CalendarIcon } from 'lucide-react'
 import Card from '@/components/ui/Card'
 import Button from '@/components/ui/Button'
 import { useAuth } from '@/contexts/AuthContext'
@@ -24,6 +24,44 @@ export default function Dashboard() {
   const { rounds: publicRounds, loading: publicLoading } = usePublicRounds()
   const router = useRouter()
 
+  // Community Stats (For Logged Out)
+  const [communityStats, setCommunityStats] = React.useState({ totalUsers: 0, totalRounds: 0, avgScore: 0 })
+
+  React.useEffect(() => {
+    if (!user) {
+      const fetchCommunityStats = async () => {
+        try {
+          const { createClient } = await import('@/lib/supabase/client')
+          const supabase = createClient()
+
+          // 1. Total Users
+          const { count: totalUsersCount } = await supabase
+            .from('users')
+            .select('*', { count: 'exact', head: true })
+
+          // 2. Total Rounds
+          const { data: roundsData, count: totalRoundsCount } = await supabase
+            .from('rounds')
+            .select('total_score', { count: 'exact' })
+
+          const scores = (roundsData as any[] || []).map(r => Number(r.total_score)).filter(s => !isNaN(s))
+          const avgScore = scores.length > 0
+            ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length)
+            : 0
+
+          setCommunityStats({
+            totalUsers: totalUsersCount || 0,
+            totalRounds: totalRoundsCount || 0,
+            avgScore
+          })
+        } catch (err) {
+          console.error('Error fetching community stats:', err)
+        }
+      }
+      fetchCommunityStats()
+    }
+  }, [user])
+
   // Stats Calculation (Only for Logged In User)
   const totalRounds = userRounds.length
 
@@ -36,41 +74,73 @@ export default function Dashboard() {
     : '-'
 
   // Data Source: Personal or Public
-  // Need to adapt types as Public rounds have userName, Personal rounds don't (in context of list)
   const roundData: any[] = user ? userRounds : publicRounds
 
-  const recentRounds = [...roundData]
-    //.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()) // Already sorted by DB query
-    .slice(0, 5)
+  // Group rounds by club_id + date (one round per golf club visit)
+  const groupedRounds = React.useMemo(() => {
+    const groups: Record<string, any> = {}
+
+    roundData.forEach(round => {
+      const key = `${round.club_id}_${round.date}_${round.user_id}`
+      if (!groups[key]) {
+        groups[key] = {
+          id: round.id, // Use first round's ID for navigation
+          club_id: round.club_id,
+          club_name: round.club_name,
+          date: round.date,
+          user_id: round.user_id,
+          courses: [],
+          total_score: 0
+        }
+      }
+      if (round.round_courses && round.round_courses.length > 0) {
+        round.round_courses.forEach((rc: any) => {
+          groups[key].courses.push({
+            course_id: rc.course_id,
+            course_name: rc.course?.name || 'Unknown Course',
+            score: 0
+          })
+        })
+      } else {
+        // Fallback for legacy or error
+        groups[key].courses.push({
+          course_id: 'unknown',
+          course_name: 'No Course Info',
+          score: 0
+        })
+      }
+      groups[key].total_score += round.total_score
+    })
+
+    return Object.values(groups).sort((a, b) => b.date.localeCompare(a.date))
+  }, [roundData])
+
+  const recentRounds = groupedRounds.slice(0, 5)
 
   return (
     <div style={{ paddingBottom: '20px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
         <h1 style={{ marginBottom: 0, fontSize: 'var(--h2-size)' }}>
-          {user ? '개요' : '커뮤니티 라운드'}
+          개요
         </h1>
       </div>
 
-      {/* Login Prompt Banner (Logged Out Only) */}
-      {!user && (
-        <Card style={{ marginBottom: '24px', background: 'linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-active) 100%)', color: 'white' }}>
-          <div style={{ textAlign: 'center', padding: '10px' }}>
-            <h2 style={{ fontSize: '1.2rem', color: 'white', marginBottom: '8px' }}>RoundLog와 함께하세요!</h2>
-            <p style={{ fontSize: '0.9rem', marginBottom: '0', opacity: 0.9 }}>
-              내 라운드를 기록하고 통계를 확인해보세요.
-            </p>
-          </div>
-        </Card>
-      )}
-
-      {/* Stats Row (Logged In Only) */}
-      {user && (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px', marginBottom: '24px' }}>
-          <StatCard title="라운드" value={totalRounds} />
-          <StatCard title="평균 타수" value={avgScore} accent />
-          <StatCard title="베스트" value={bestScore} />
-        </div>
-      )}
+      {/* Stats Row (Logged In / Logged Out) */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px', marginBottom: '24px' }}>
+        {user ? (
+          <>
+            <StatCard title="라운드" value={totalRounds} />
+            <StatCard title="평균 타수" value={avgScore} accent />
+            <StatCard title="베스트" value={bestScore} />
+          </>
+        ) : (
+          <>
+            <StatCard title="전체 골퍼" value={communityStats.totalUsers} />
+            <StatCard title="전체 라운드" value={communityStats.totalRounds} />
+            <StatCard title="전체 평균" value={communityStats.avgScore} accent />
+          </>
+        )}
+      </div>
 
       {/* Recent Rounds Section */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
@@ -85,49 +155,39 @@ export default function Dashboard() {
           recentRounds.map(round => (
             <div key={round.id} style={{
               display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-              padding: '16px 20px', background: 'white', // removed transparency for cleaner look, or keep transparent if glass
+              padding: '16px 20px', background: 'white',
               borderBottom: '1px solid var(--color-border)',
-              cursor: user ? 'pointer' : 'default',
+              cursor: 'pointer',
               transition: 'background 0.2s',
             }}
               className="hover:bg-gray-50"
-              onClick={() => user && router.push(`/rounds/${round.id}`)}>
+              onClick={() => router.push(`/rounds/${round.id}`)}>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                {/* Line 1: Main Title (Course) */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                {/* Line 1: Club Name (Primary) */}
                 <div style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--color-text-main)' }}>
-                  {round.course_name}
+                  {round.club_name}
                 </div>
 
-                {/* Line 2: Metadata (Date | Type | User) */}
+                {/* Line 2: Metadata (Date | Courses) */}
                 <div style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <span>{round.date.replace(/-/g, '.')}</span>
                   <span style={{ width: '1px', height: '10px', background: 'var(--color-border)' }}></span>
-                  <span>{round.club_name}</span>
-                  {!user && (
-                    <>
-                      <span style={{ width: '1px', height: '10px', background: 'var(--color-border)' }}></span>
-                      <span style={{ color: 'var(--color-primary)', fontWeight: 500 }}>
-                        {/* 
-                           Public rounds usually don't have joined user info in this simple query unless we join.
-                           But for now, show 'User' or verify if we can fetch it. 
-                           The SQL setup inserted dummy user. 
-                        */}
-                        {'Golfer'}
-                      </span>
-                    </>
-                  )}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <MapPin size={12} />
+                    <span>{round.courses.map((c: any) => c.course_name).join(' / ')}</span>
+                  </div>
                 </div>
               </div>
 
-              {/* Right Side: Score */}
+              {/* Right Side: Total Score Badge */}
               <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
                 <div style={{
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   width: '40px', height: '40px',
                   borderRadius: '50%',
                   background: 'var(--color-bg-light)',
-                  fontSize: '1.2rem', fontWeight: 800,
+                  fontSize: '1.1rem', fontWeight: 800,
                   color: 'var(--color-text-main)'
                 }}>
                   {round.total_score}
@@ -139,7 +199,7 @@ export default function Dashboard() {
         ) : (
           <div style={{ padding: '40px', textAlign: 'center', color: 'var(--color-text-muted)' }}>
             <Trophy size={40} style={{ marginBottom: '10px', opacity: 0.5 }} />
-            <p>기록된 라운드가 없습니다.</p>
+            <p>아직 기록된 라운드가 없어요.</p>
             {user && (
               <Button variant="primary" style={{ marginTop: '16px' }} onClick={() => router.push('/rounds/new')}>
                 첫 라운드 기록하기

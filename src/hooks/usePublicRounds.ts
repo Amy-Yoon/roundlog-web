@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Round } from '@/types/database.types'
 
@@ -6,25 +6,52 @@ export const usePublicRounds = () => {
     const [rounds, setRounds] = useState<Round[]>([])
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
-    const supabase = createClient()
+    const supabase = useMemo(() => createClient(), [])
 
     const fetchPublicRounds = useCallback(async () => {
         try {
             setLoading(true)
+
+            const { data, error } = await supabase
+                .from('rounds')
+                .select('*, round_courses(*, course:golf_courses(*))')
+                .eq('is_public', true)
+                .order('date', { ascending: false })
+                .limit(20)
+
+            if (error) {
+                // Silently handle error - just set empty array
+                setRounds([])
+                setError(null) // Don't show error to user
+                return
+            }
+
+            setRounds(data as Round[])
+            setError(null)
+        } catch (err: any) {
+            // Silently handle error - just set empty array
+            setRounds([])
+            setError(null) // Don't show error to user
+        } finally {
+            setLoading(false)
+        }
+    }, [supabase])
+
+    const fetchPublicRoundsByClub = useCallback(async (clubId: string) => {
+        try {
             const { data, error } = await supabase
                 .from('rounds')
                 .select('*')
                 .eq('is_public', true)
+                .eq('club_id', clubId)
                 .order('date', { ascending: false })
-                .limit(20) // Limit to recent 20 for dashboard
+                .limit(50)
 
             if (error) throw error
-            if (data) setRounds(data)
+            return data as Round[]
         } catch (err: any) {
-            console.error('Error fetching public rounds:', err)
-            setError(err.message)
-        } finally {
-            setLoading(false)
+            console.error('Error fetching club public rounds:', err)
+            return []
         }
     }, [supabase])
 
@@ -36,6 +63,7 @@ export const usePublicRounds = () => {
         rounds,
         loading,
         error,
-        fetchPublicRounds
+        fetchPublicRounds,
+        fetchPublicRoundsByClub
     }
 }

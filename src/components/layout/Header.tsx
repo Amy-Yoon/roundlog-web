@@ -35,14 +35,28 @@ const Header = () => {
                 </Link>
 
                 {user ? (
-                    <Button
-                        variant="outline"
-                        onClick={signOut}
-                        style={{ padding: '6px 12px', fontSize: '0.8rem' }}
+                    <button
+                        onClick={async () => {
+                            try {
+                                await signOut();
+                            } catch (error) {
+                                // Silently handle error
+                            }
+                        }}
+                        style={{
+                            padding: '6px 12px',
+                            fontSize: '0.8rem',
+                            border: '1px solid currentColor',
+                            borderRadius: '4px',
+                            background: 'transparent',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center'
+                        }}
                     >
                         <LogOut size={16} style={{ marginRight: 4 }} />
                         Logout
-                    </Button>
+                    </button>
                 ) : (
                     // In a real app, perhaps redirect to /login page or show modal
                     // For now using Google Sign In direct trigger if wanted, or just a button

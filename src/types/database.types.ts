@@ -118,22 +118,25 @@ export interface GolfCourseHoleUpdate extends Partial<GolfCourseHoleInsert> { }
 
 // Round Types
 // Round Types matching Supabase Schema
+// Round Types (Updated for Schema V2)
 export interface Round {
     id: string
     user_id: string
     created_at?: string
     date: string
-    tee_time: string
+    tee_time?: string
     club_id: string
     club_name: string
-    course_id: string
-    course_name: string
     total_score: number
-    hole_scores?: Json // stored as JSONB
+    play_tee?: string // New field
+
+    // Economics
     green_fee?: number
     cart_fee?: number
     caddy_fee?: number
     total_cost?: number
+
+    // Conditions
     green_speed?: number
     tee_box_condition?: string
     fairway_rating?: number
@@ -141,28 +144,53 @@ export interface Round {
     weather?: string
     temperature?: number
     wind_speed?: string
+
+    // Meta
     partners?: string
     memo?: string
-    hole_comments?: Json // stored as JSONB
     is_public?: boolean
+
+    // Relations (Populated manually in application layer or via joins)
+    round_courses?: RoundCourse[]
 }
 
-export interface RoundInsert extends Omit<Round, 'id' | 'created_at'> {
+export interface RoundInsert extends Omit<Round, 'id' | 'created_at' | 'round_courses'> {
     id?: string
 }
 
 export interface RoundUpdate extends Partial<RoundInsert> { }
 
-// Detailed Hole Scores (for Round Detail)
-// Note: We are moving towards hole_scores being stored in JSONB or separate table
-// This matches the legacy structure but matches the round detail needs
-export interface HoleScore {
+// Round Course (Split Course Support)
+export interface RoundCourse {
     id: string
     round_id: string
-    hole_number: number
+    course_id: string
+    sequence: number // 1 or 2
+    hole_start: number
+    hole_end: number
+    holes_count: number
+    created_at?: string
+
+    // Relations
+    round_holes?: RoundHole[]
+    course?: GolfCourse // Joined data
+}
+
+export interface RoundCourseInsert extends Omit<RoundCourse, 'id' | 'created_at' | 'round_holes' | 'course'> {
+    id?: string
+}
+
+// Round Hole (Detailed Score)
+export interface RoundHole {
+    id: string
+    round_course_id: string
+    hole_no: number // 1-18
     par: number
-    score: number
-    putts?: number
-    fairway_hit?: boolean
-    gir?: boolean
+    score?: number | null
+    hole_comment?: string
+    created_at?: string
+}
+
+export interface RoundHoleInsert extends Omit<RoundHole, 'id' | 'created_at'> {
+    id?: string
 }

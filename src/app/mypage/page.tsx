@@ -8,6 +8,8 @@ import Card from '@/components/ui/Card'
 import Button from '@/components/ui/Button'
 import { User, Edit2, LogOut, Check, X, Shield, Award } from 'lucide-react'
 
+import LoginRequired from '@/components/auth/LoginRequired'
+
 export default function MyPage() {
     const { user, dbUser, signOut, updateProfile } = useAuth()
     const [isEditing, setIsEditing] = useState(false)
@@ -16,15 +18,14 @@ export default function MyPage() {
         handicap: '',
         bio: ''
     })
+    const [securityMsg, setSecurityMsg] = useState(false)
 
     if (!user) {
         return (
-            <div style={{ padding: '40px', textAlign: 'center' }}>
-                <h1 style={{ marginBottom: 0, fontSize: 'var(--h2-size)' }}>마이페이지</h1>
-                <Card style={{ padding: '30px', marginTop: 20 }}>
-                    <p style={{ color: 'var(--color-text-muted)', marginBottom: '16px' }}>로그인이 필요한 서비스입니다.</p>
-                </Card>
-            </div>
+            <LoginRequired
+                title="마이페이지"
+                description="로그인 후 내 프로필 정보를 확인해보세요!"
+            />
         )
     }
 
@@ -150,7 +151,7 @@ export default function MyPage() {
                         </div>
 
                         <p style={{ color: 'var(--color-text-muted)', marginBottom: '24px', whiteSpace: 'pre-wrap', lineHeight: '1.5' }}>
-                            {dbUser?.bio || '자기소개를 입력해주세요.'}
+                            {dbUser?.bio || '자기소개를 입력해보세요!'}
                         </p>
 
                         <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
@@ -167,31 +168,54 @@ export default function MyPage() {
                 <Card style={{ padding: '0' }}>
                     <div style={{ display: 'flex', flexDirection: 'column' }}>
                         <button
+                            onClick={() => {
+                                setSecurityMsg(true);
+                                setTimeout(() => setSecurityMsg(false), 3000);
+                            }}
                             style={{
                                 padding: '16px 20px',
                                 background: 'none', border: 'none',
                                 borderBottom: '1px solid var(--color-border)',
                                 display: 'flex', alignItems: 'center', gap: '12px',
                                 fontSize: '1rem', color: 'var(--color-text-main)',
-                                cursor: 'pointer', textAlign: 'left', width: '100%'
+                                cursor: 'pointer', textAlign: 'left', width: '100%',
+                                position: 'relative'
                             }}
                         >
                             <Shield size={20} color="var(--color-text-muted)" />
-                            계정 보안
+                            <div style={{ flex: 1 }}>계정 보안</div>
+                            {securityMsg && (
+                                <span style={{
+                                    fontSize: '0.8rem',
+                                    color: 'var(--color-primary)',
+                                    background: 'rgba(76, 175, 80, 0.05)',
+                                    padding: '2px 8px',
+                                    borderRadius: '4px',
+                                    animation: 'fadeIn 0.2s'
+                                }}>
+                                    준비 중입니다
+                                </span>
+                            )}
                         </button>
-                        <button
-                            onClick={signOut}
+                        <Button
+                            variant="ghost"
+                            onClick={() => {
+                                console.log('[DEBUG] MyPage logout button clicked');
+                                signOut();
+                            }}
                             style={{
                                 padding: '16px 20px',
-                                background: 'none', border: 'none',
                                 display: 'flex', alignItems: 'center', gap: '12px',
                                 fontSize: '1rem', color: 'var(--color-danger)',
-                                cursor: 'pointer', textAlign: 'left', width: '100%'
+                                cursor: 'pointer', textAlign: 'left', width: '100%',
+                                border: 'none',
+                                justifyContent: 'flex-start',
+                                borderRadius: 0
                             }}
                         >
                             <LogOut size={20} />
                             로그아웃
-                        </button>
+                        </Button>
                     </div>
                 </Card>
             )}

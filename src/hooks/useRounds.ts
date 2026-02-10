@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Round, RoundInsert, RoundUpdate } from '@/types/database.types'
 import { useAuth } from '@/contexts/AuthContext'
@@ -8,7 +8,7 @@ export const useRounds = () => {
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
     const { user } = useAuth()
-    const supabase = createClient()
+    const supabase = useMemo(() => createClient(), [])
 
     const fetchRounds = useCallback(async () => {
         if (!user) {
@@ -18,35 +18,95 @@ export const useRounds = () => {
 
         try {
             setLoading(true)
+
             const { data, error } = await supabase
                 .from('rounds')
-                .select('*')
+                .select('*, round_courses(*, course:golf_courses(*))')
                 .eq('user_id', user.id)
                 .order('date', { ascending: false })
 
-            if (error) throw error
-            if (data) setRounds(data)
+            if (error) {
+                // Silently handle error
+                setRounds([])
+                setError(null)
+                return
+            }
+
+            setRounds(data as Round[])
+            setError(null)
         } catch (err: any) {
-            setError(err.message)
+            // Silently handle error
+            setRounds([])
+            setError(null)
         } finally {
             setLoading(false)
         }
-    }, [user, supabase])
+    }, [user?.id, supabase])
 
     useEffect(() => {
         fetchRounds()
     }, [fetchRounds])
 
-    const createRound = async (round: RoundInsert) => {
+    // Composite input type for creating a round with all details
+    type CreateRoundData = {
+        round: RoundInsert
+        courses: {
+            course_id: string
+            sequence: number
+            hole_start: number
+            hole_end: number
+            holes_count: number
+            holes?: {
+                hole_no: number
+                par: number
+                score: number | null
+                hole_comment?: string
+            }[]
+        }[]
+    }
+
+    const createRound = async (data: CreateRoundData) => {
         try {
-            const { data, error } = await (supabase.from('rounds') as any)
-                .insert(round)
+            // 1. Insert Round
+            const { data: roundData, error: roundError } = await (supabase.from('rounds') as any)
+                .insert(data.round)
                 .select()
                 .single()
 
-            if (error) throw error
-            setRounds((prev) => [data, ...prev])
-            return data
+            if (roundError) throw roundError
+            const roundId = roundData.id
+
+            // 2. Insert Round Courses & Holes
+            for (const courseData of data.courses) {
+                const { holes, ...courseFields } = courseData
+                const { data: rcData, error: rcError } = await (supabase.from('round_courses') as any)
+                    .insert({
+                        ...courseFields,
+                        round_id: roundId
+                    })
+                    .select()
+                    .single()
+
+                if (rcError) throw rcError
+                const roundCourseId = rcData.id
+
+                // 3. Insert Holes if available
+                if (holes && holes.length > 0) {
+                    const holesInsert = holes.map(h => ({
+                        ...h,
+                        round_course_id: roundCourseId
+                    }))
+
+                    const { error: holesError } = await (supabase.from('round_holes') as any)
+                        .insert(holesInsert)
+
+                    if (holesError) throw holesError
+                }
+            }
+
+            // Refresh local state (simplest way is to fetch again or reconstruct, fetching is safer for joins)
+            fetchRounds()
+            return roundData
         } catch (err: any) {
             setError(err.message)
             throw err

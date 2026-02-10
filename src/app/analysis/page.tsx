@@ -3,17 +3,33 @@
 import React, { useMemo } from 'react'
 
 export const dynamic = 'force-dynamic'
+import { useAuth } from '@/contexts/AuthContext'
 import { useRounds } from '@/hooks/useRounds'
 import Card from '@/components/ui/Card'
-import { TrendingUp, Sun } from 'lucide-react'
+import { TrendingUp, Sun, BarChart3, PlusCircle } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import Button from '@/components/ui/Button'
+import LoginRequired from '@/components/auth/LoginRequired'
 
 export default function Analysis() {
+    const { user } = useAuth()
     const { rounds } = useRounds()
+    const router = useRouter()
+
+    if (!user) {
+        return (
+            <LoginRequired
+                title="분석 리포트"
+                description="로그인 후 나만의 골프 데이터를 확인해보세요!"
+            />
+        )
+    }
 
     // Stats Calculation
     const stats: any = useMemo(() => {
         if (!rounds || rounds.length === 0) return null
 
+        // ... existing stats logic ...
         const scores = rounds.map(r => Number(r.total_score))
         const avgScore = Math.round(scores.reduce((a, b) => a + b, 0) / scores.length)
         const bestScore = Math.min(...scores)
@@ -39,9 +55,58 @@ export default function Analysis() {
 
     if (!stats) {
         return (
-            <div style={{ padding: '20px', textAlign: 'center', color: 'var(--color-text-muted)' }}>
-                <h1 style={{ marginBottom: 0, fontSize: 'var(--h2-size)' }}>분석</h1>
-                <p>데이터가 충분하지 않습니다. 라운드를 기록해보세요!</p>
+            <div style={{
+                height: 'calc(100vh - 150px)',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '20px',
+                textAlign: 'center'
+            }}>
+                <div style={{
+                    width: '80px',
+                    height: '80px',
+                    borderRadius: '24px',
+                    background: 'var(--color-bg-light)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    marginBottom: '24px',
+                    color: 'var(--color-primary)',
+                    boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.05)'
+                }}>
+                    <BarChart3 size={40} />
+                </div>
+
+                <h1 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '12px', color: 'var(--color-text-bright)' }}>
+                    분석 데이터가 부족해요
+                </h1>
+
+                <p style={{
+                    fontSize: '1rem',
+                    color: 'var(--color-text-muted)',
+                    lineHeight: '1.6',
+                    marginBottom: '32px',
+                    maxWidth: '260px'
+                }}>
+                    라운드를 5개 이상 기록하면<br />
+                    나의 분석 리포트를 확인할 수 있어요
+                </p>
+
+                <Button
+                    variant="primary"
+                    onClick={() => router.push('/rounds/new')}
+                    style={{
+                        padding: '14px 28px',
+                        fontSize: '1rem',
+                        gap: '8px',
+                        boxShadow: '0 8px 16px -4px rgba(76, 175, 80, 0.3)'
+                    }}
+                >
+                    <PlusCircle size={20} />
+                    첫 라운드 기록하기
+                </Button>
             </div>
         )
     }
