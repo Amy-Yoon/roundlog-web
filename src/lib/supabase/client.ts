@@ -6,16 +6,20 @@ let client: ReturnType<typeof createBrowserClient<Database>> | null = null
 export const createClient = () => {
     if (client) return client
 
-    // Use direct literal access within the function body to ensure 
-    // Next.js static analysis bakes them into the client bundle.
+    // Simplified literal access for Next.js static analysis.
+    // If these are missing, the Supabase client will throw on creation.
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL!
+    const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+
+    if (typeof window !== 'undefined') {
+        console.log('[DEBUG] Supabase Init - URL present:', !!url, 'Key present:', !!key)
+    }
+
     try {
-        client = createBrowserClient<Database>(
-            process.env.NEXT_PUBLIC_SUPABASE_URL!,
-            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-        )
+        client = createBrowserClient<Database>(url, key)
     } catch (err) {
-        console.error('Supabase initialization error:', err)
-        // Fallback for build time safety
+        console.error('Supabase initialization failed:', err)
+        // Fallback for extreme build safety
         client = createBrowserClient<Database>(
             'https://placeholder.supabase.co',
             'placeholder-key'
